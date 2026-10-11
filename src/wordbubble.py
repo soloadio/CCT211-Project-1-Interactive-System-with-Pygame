@@ -74,13 +74,20 @@ def make_wordbubble(screen_width, screen_height, spritegroup, font, word, x=None
     return ball
 
 
-def mergeword(word1, word2, screenwidth, screenheight, spritegroup, font):
+def mergeword(word1, word2, screenwidth, screenheight, spritegroup, font, model):
     midx = (word1.rect.center[0]+word2.rect.center[0])//2
     midy = (word1.rect.center[1]+word2.rect.center[1])//2
-    make_wordbubble(screenwidth, screenheight, spritegroup, font, predictword(word1.word, word2.word), midx, midy)
+    make_wordbubble(screenwidth, screenheight, spritegroup, font, predictword(word1.word, word2.word, model), midx, midy)
     word1.kill()
     word2.kill()
 
 
-def predictword(text1, text2):
-    return text1 + text2
+def predictword(text1, text2, model):
+    try:
+        result = model.most_similar(positive=[text1, text2])
+    except:
+        return text1 + text2
+    print(result)
+    predictedword = result[0][0]
+    print(f"{text1} + {text2} = {predictedword}")
+    return predictedword

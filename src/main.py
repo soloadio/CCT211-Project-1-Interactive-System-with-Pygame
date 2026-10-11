@@ -8,6 +8,7 @@ import pygame
 import random
 from wordbubble import *
 from userinterface import *
+import gensim.downloader as api
 
 black = (0, 0, 0)
 
@@ -34,6 +35,8 @@ class Game:
         self.offsety = 0
         # Create font
         self.font = pygame.font.Font('freesansbold.ttf', 32)
+        print("Loading model... (this may take up to 30 seconds)")
+        self.model = api.load("glove-wiki-gigaword-50")
 
         # --- Sprite lists
         # This is a list of every sprite.
@@ -87,7 +90,7 @@ class Game:
             for collidedwordbubble in collisions:
                 if collidedwordbubble is wordbubble:
                     continue
-                mergeword(wordbubble, collidedwordbubble, self.screen_width, self.screen_height, self.wordbubbles, self.font)
+                mergeword(wordbubble, collidedwordbubble, self.screen_width, self.screen_height, self.wordbubbles, self.font, self.model)
                 if collidedwordbubble is self.held_bubble or wordbubble is self.held_bubble:
                     self.held_bubble = None
                 return
