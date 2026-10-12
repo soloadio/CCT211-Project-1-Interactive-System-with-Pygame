@@ -11,13 +11,12 @@ from wordbubble import *
 from userinterface import *
 import gensim.downloader as api
 from wonderwords import RandomWord
+import json
 
 # --- Game Classes
 
 class Game:
     """ This class represents the Game. It contains all the game objects. """
-
-
     def __init__(self):
         """ Set up the game on creation. """
 
@@ -39,6 +38,8 @@ class Game:
         self.font = pygame.font.Font('freesansbold.ttf', 32)
         self.model = api.load("glove-wiki-gigaword-50")
 
+        self.emoji_map = self.setup_emoji()
+
         self.rw = RandomWord()
         self.targetword = self.rw.word()
 
@@ -52,6 +53,31 @@ class Game:
         # --- Create the sprites
         self.textbar = TextBar(self.uigroup, self.screen_width, self.screen_height, self.font)
         self.targetlabel = Label(self.uigroup, self.font, "Target Word: " + self.targetword, self.textbar.rect.centerx, self.textbar.rect.top-10, self.screen_width, self.screen_height)
+
+    def setup_emoji(self):
+        with open("src/assets/openmoji.json", "r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        emoji_map = {}
+        for emoji in data:
+            if "-" in emoji["hexcode"]: # skip the different skin tone
+                continue
+            words = emoji["annotation"].lower().split()
+            model_known = []
+            for word in words:
+                if word.isalpha() and word in self.model:
+                    model_known.append(word)
+
+            if len(model_known) == 0:
+                continue
+            elif len(model_known) == 1 and model_known[0] not in emoji_map:
+                emoji_map[model_known[0]] = emoji["hexcode"]
+            else:
+                for knownwords in model_known:
+                    if knownwords not in emoji_map:
+                        emoji_map[knownwords] = emoji["hexcode"]
+
+        return emoji_map
 
 
 
@@ -76,7 +102,7 @@ class Game:
             else:
                 result = self.textbar.handle_keypress(event)
                 if result:
-                    make_wordbubble(self.screen_width, self.screen_height, self.wordbubbles, self.font, result)
+                    make_wordbubble(self.screen_width, self.screen_height, self.wordbubbles, self.font, result, get_emoji(self.model, self.emoji_map, result))
 
     def update(self, deltatime):
         self.checkwin()
@@ -103,7 +129,7 @@ class Game:
             for collidedwordbubble in collisions:
                 if collidedwordbubble is wordbubble:
                     continue
-                mergeword(wordbubble, collidedwordbubble, self.screen_width, self.screen_height, self.wordbubbles, self.font, self.model)
+                mergeword(wordbubble, collidedwordbubble, self.screen_width, self.screen_height, self.wordbubbles, self.font, self.model, self.emoji_map)
                 if collidedwordbubble is self.held_bubble or wordbubble is self.held_bubble:
                     self.held_bubble = None
                 return
@@ -136,8 +162,8 @@ class Game:
 
     def checkwin(self):
         for wordbubble in self.wordbubbles:
-            print(wordbubble.word)
-            print(self.targetword)
+            # print(wordbubble.word)
+            # print(self.targetword)
             if wordbubble.word == self.targetword:
                 self.win = True
 

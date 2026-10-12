@@ -6,7 +6,7 @@ class Bubble(pygame.sprite.Sprite):
     Class to keep track of a ball's location and vector.
     """
 
-    def __init__(self, color, x, y, change_x, change_y, spritegroup, screen_width, screen_height, ball_size, font, word):
+    def __init__(self, color, x, y, change_x, change_y, spritegroup, screen_width, screen_height, ball_size, font, word, hexcode):
         # Call the parent class (Sprite) constructor
         pygame.sprite.Sprite.__init__(self, spritegroup)
 
@@ -15,15 +15,31 @@ class Bubble(pygame.sprite.Sprite):
         self.ball_size = ball_size
 
         text = font.render(word, True, (0,0,0))
-        textRect = text.get_rect()
+        textrect = text.get_rect()
+
+        img_path = f"src/assets/emoji/{hexcode}.png"
 
         # Create an image of the block, and fill it with a color.
         # This could also be an image loaded from the disk.
-        self.image = pygame.Surface([textRect.width, textRect.height])
-        pygame.draw.rect(self.image, color, self.image.get_rect())
-        textRect.center = self.image.get_rect().center
+        self.emoji = pygame.image.load(img_path).convert_alpha()
+        self.emoji = pygame.transform.smoothscale(self.emoji, (64, 64))
 
-        self.image.blit(text, textRect)
+        width = max(self.emoji.get_width(), textrect.width)
+        gap = 4
+        height = self.emoji.get_height() + gap + textrect.height
+
+        self.image = pygame.Surface([width, height], pygame.SRCALPHA)
+        self.image.fill((0, 0, 0, 0))
+
+
+        emojirect = self.emoji.get_rect()
+        emojirect.midtop = (width // 2, 0)
+
+        self.image.blit(self.emoji, emojirect)
+
+        textrect.midbottom = (width // 2, height)
+
+        self.image.blit(text, textrect)
 
         # Fetch the rectangle object that has the dimensions of the image
         # Update the position of this object by setting the values of rect.x and rect.y
@@ -51,7 +67,7 @@ class Bubble(pygame.sprite.Sprite):
             self.change_y *= -1
 
 
-def make_wordbubble(screen_width, screen_height, spritegroup, font, word, x=None, y=None):
+def make_wordbubble(screen_width, screen_height, spritegroup, font, word, hexcode, x=None, y=None):
     """
     Function to make a new, random ball.
     """
@@ -69,25 +85,37 @@ def make_wordbubble(screen_width, screen_height, spritegroup, font, word, x=None
     # Speed and direction of ball
     change_x = random.randrange(50, 150)*random.choice([-1, 1])
     change_y = random.randrange(50, 150)*random.choice([-1, 1])
-    ball = Bubble(colour, width, height, change_x, change_y, spritegroup, screen_width, screen_height, BALL_SIZE, font, word)
+    ball = Bubble(colour, width, height, change_x, change_y, spritegroup, screen_width, screen_height, BALL_SIZE, font, word, hexcode)
 
     return ball
 
 
-def mergeword(word1, word2, screenwidth, screenheight, spritegroup, font, model):
+def mergeword(word1, word2, screenwidth, screenheight, spritegroup, font, model, emoji_map):
     midx = (word1.rect.center[0]+word2.rect.center[0])//2
     midy = (word1.rect.center[1]+word2.rect.center[1])//2
-    make_wordbubble(screenwidth, screenheight, spritegroup, font, predictword(word1.word, word2.word, model), midx, midy)
+    predicted_word, hexcode = predictword(word1.word, word2.word, model, emoji_map)
+    make_wordbubble(screenwidth, screenheight, spritegroup, font, predicted_word, hexcode, midx, midy)
     word1.kill()
     word2.kill()
 
 
-def predictword(text1, text2, model):
+def predictword(text1, text2, model, emoji_map):
     try:
-        result = model.most_similar(positive=[text1, text2])
+        predictedword = model.most_similar(positive=[text1, text2])[0][0]
     except:
-        return text1 + text2
-    print(result)
-    predictedword = result[0][0]
-    print(f"{text1} + {text2} = {predictedword}")
-    return predictedword
+        predictedword = text1 + text2
+    print(predictedword)
+
+    hexcode = get_emoji(model, emoji_map, predictedword)
+
+    return predictedword, hexcode
+
+def get_emoji(model, emoji_map, text):
+
+    try:
+        similar_emoji = model.most_similar_to_given(text, list(emoji_map.keys()))
+        print(similar_emoji)
+        hexcode = emoji_map[similar_emoji]
+    except:
+        hexcode = "1F4A9"
+    return hexcode
