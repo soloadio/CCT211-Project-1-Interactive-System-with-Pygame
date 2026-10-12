@@ -3,14 +3,15 @@
     Word Merger
     CCT 211
     Solomon Ador-Dionisio & Brandon Lok-tim Wong
+    Python 3.12.10
 """
 import pygame
 import random
 from wordbubble import *
 from userinterface import *
 import gensim.downloader as api
-
-black = (0, 0, 0)
+from wonderwords import RandomWord
+import time
 
 # --- Game Classes
 
@@ -21,6 +22,7 @@ class Game:
         """ Set up the game on creation. """
 
         # Initialize Pygame
+        print("Loading model... (this may take up to 30 seconds)")
         pygame.init()
         # --- Create the window
         # Set the height and width of the screen
@@ -35,8 +37,12 @@ class Game:
         self.offsety = 0
         # Create font
         self.font = pygame.font.Font('freesansbold.ttf', 32)
-        print("Loading model... (this may take up to 30 seconds)")
         self.model = api.load("glove-wiki-gigaword-50")
+
+        self.rw = RandomWord()
+        self.targetword = self.rw.word()
+
+        self.win = False
 
         # --- Sprite lists
         # This is a list of every sprite.
@@ -45,6 +51,7 @@ class Game:
 
         # --- Create the sprites
         self.textbar = TextBar(self.uigroup, self.screen_width, self.screen_height, self.font)
+        self.targetlabel = Label(self.uigroup, self.font, "Target Word: " + self.targetword, self.textbar.rect.centerx, self.textbar.rect.top-10, self.screen_width, self.screen_height)
 
 
 
@@ -72,6 +79,12 @@ class Game:
                     make_wordbubble(self.screen_width, self.screen_height, self.wordbubbles, self.font, result)
 
     def update(self, deltatime):
+        self.checkwin()
+        if self.win:
+            print("you won")
+            winlabel = Label(self.uigroup, self.font, "You Win!", self.screen_width//2, self.screen_height//2, self.screen_width, self.screen_height)
+            
+            return
         self.wordbubbles.update(deltatime)
         self.check_merge()
 
@@ -105,7 +118,7 @@ class Game:
 
         # -------- Main Program Loop -----------
         while self.running:
-
+            
             # --- Event processing
             self.poll()
 
@@ -120,6 +133,15 @@ class Game:
 
             # --- Limit the frames per second
             deltatime = clock.tick(60)/1000
+
+    def checkwin(self):
+        for wordbubble in self.wordbubbles:
+            print(wordbubble.word)
+            print(self.targetword)
+            if wordbubble.word == self.targetword:
+                self.win = True
+
+
 
 
 if __name__ == '__main__':
