@@ -11,12 +11,12 @@ from wordbubble import *
 from userinterface import *
 import gensim.downloader as api
 from wonderwords import RandomWord
-import time
 
 # --- Game Classes
 
 class Game:
     """ This class represents the Game. It contains all the game objects. """
+
 
     def __init__(self):
         """ Set up the game on creation. """
