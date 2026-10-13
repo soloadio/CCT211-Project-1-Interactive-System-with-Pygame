@@ -44,6 +44,7 @@ class Game:
         self.targetword = self.rw.word()
 
         self.win = False
+        self.score = 0
 
         # --- Sprite lists
         # This is a list of every sprite.
@@ -53,6 +54,9 @@ class Game:
         # --- Create the sprites
         self.textbar = TextBar(self.uigroup, self.screen_width, self.screen_height, self.font)
         self.targetlabel = Label(self.uigroup, self.font, "Target Word: " + self.targetword, self.textbar.rect.centerx, self.textbar.rect.top-10, self.screen_width, self.screen_height)
+        self.score_label = Label(self.uigroup, self.font, "Score: " + str(self.score), self.screen_width-100, 100, self.screen_width, self.screen_height)
+                
+
 
     def setup_emoji(self):
         with open("src/assets/openmoji.json", "r", encoding="utf-8") as file:
@@ -102,6 +106,9 @@ class Game:
             else:
                 result = self.textbar.handle_keypress(event)
                 if result:
+                    self.score += 1
+                    self.score_label.current_text = self.score
+                    self.score_label.set_text()
                     make_wordbubble(self.screen_width, self.screen_height, self.wordbubbles, self.font, result, get_emoji(self.model, self.emoji_map, result))
 
     def update(self, deltatime):
