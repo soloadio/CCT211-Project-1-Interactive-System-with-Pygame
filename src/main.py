@@ -27,7 +27,7 @@ class Game:
         # --- Create the window
         # Set the height and width of the screen
         self.screen = pygame.display.set_mode(
-            [0, 0])
+            [1400, 1000])
         self.screen_width = self.screen.get_width()
         self.screen_height = self.screen.get_height()
 
