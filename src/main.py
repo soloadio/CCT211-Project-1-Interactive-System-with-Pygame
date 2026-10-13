@@ -6,12 +6,13 @@
     Python 3.12.10
 """
 import pygame
-import random
 from wordbubble import *
 from userinterface import *
+from states import *
 import gensim.downloader as api
 from wonderwords import RandomWord
 import json
+import os
 
 # --- Game Classes
 
@@ -30,19 +31,22 @@ class Game:
         self.screen_width = self.screen.get_width()
         self.screen_height = self.screen.get_height()
 
-        self.running = False
+        self.state = States()
         self.held_bubble = None
         self.offsetx = 0
         self.offsety = 0
+        
         # Create font
         self.font = pygame.font.Font('freesansbold.ttf', 32)
+
+        # Setup word prediction model
         self.model = api.load("glove-wiki-gigaword-50")
 
         self.emoji_map = self.setup_emoji()
 
+        # Setup goals
         self.rw = RandomWord()
         self.targetword = self.rw.word()
-
         self.win = False
         self.score = 0
 
@@ -53,9 +57,27 @@ class Game:
 
         # --- Create the sprites
         self.textbar = TextBar(self.uigroup, self.screen_width, self.screen_height, self.font)
-        self.targetlabel = Label(self.uigroup, self.font, "Target Word: " + self.targetword, self.textbar.rect.centerx, self.textbar.rect.top-10, self.screen_width, self.screen_height)
-        self.score_label = Label(self.uigroup, self.font, "Score: " + str(self.score), self.screen_width-100, 100, self.screen_width, self.screen_height)
-                
+        self.targetlabel = Label(self.uigroup, self.font, "Target Word: " + self.targetword, self.textbar.rect.centerx, self.textbar.rect.top-10)
+        self.score_label = Label(self.uigroup, self.font, "Score: " + str(self.score), self.screen_width-100, 100)
+        self.exitButton = None
+        self.restartButton = None
+        self.pauseButton = Button(self.uigroup, self.font, "Time Stop or (ESC)", 200, 100, 300, 50)
+        self.winlabel = None
+
+    def restart(self):
+        self.exitButton.kill()
+        self.restartButton.kill()
+        self.winlabel.kill()
+        self.wordbubbles.empty()
+        self.win = False
+        self.held_bubble = None
+        self.targetword = self.rw.word()
+        self.targetlabel.set_text("Target: " + self.targetword)
+        self.score = 0
+        self.score_label.set_text("Score: " + str(self.score))
+        self.exitButton = None
+        self.restartButton = None
+        self.winlabel = None
 
 
     def setup_emoji(self):
@@ -83,13 +105,22 @@ class Game:
 
         return emoji_map
 
-
-
     def poll(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.running = False
+                self.state.change_state(ENDED)
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                if self.pauseButton.is_clicked(event.pos):
+                    if self.state.check_state(PAUSED):
+                        self.state.change_state(RUNNING)
+                    elif self.state.check_state(RUNNING):
+                        self.state.change_state(PAUSED)
+                if self.win:
+                    if self.exitButton.is_clicked(event.pos):
+                        self.state.change_state(ENDED)
+                    elif self.restartButton.is_clicked(event.pos):
+                        self.restart()
+                    continue
                 for wordbubble in self.wordbubbles:
                     if wordbubble.rect.collidepoint(event.pos):
                         self.held_bubble = wordbubble
@@ -105,19 +136,22 @@ class Game:
                 self.held_bubble = None
             else:
                 result = self.textbar.handle_keypress(event)
-                if result:
-                    self.score += 1
-                    self.score_label.current_text = self.score
-                    self.score_label.set_text()
-                    make_wordbubble(self.screen_width, self.screen_height, self.wordbubbles, self.font, result, get_emoji(self.model, self.emoji_map, result))
-
+                if result == pygame.K_ESCAPE:
+                    if self.state.check_state(RUNNING):
+                        self.state.change_state(PAUSED)
+                    else:
+                        self.state.change_state(RUNNING)
+                elif result:
+                    if result == self.targetword:
+                        print("You cannot cheat.")
+                    else:
+                        self.score += 1
+                        self.score_label.set_text("Score: " + str(self.score))
+                        make_wordbubble(self.screen_width, self.screen_height, self.wordbubbles, self.font, result, get_emoji(self.model, self.emoji_map, result))
     def update(self, deltatime):
-        self.checkwin()
         if self.win:
-            print("you won")
-            winlabel = Label(self.uigroup, self.font, "You Win!", self.screen_width//2, self.screen_height//2, self.screen_width, self.screen_height)
-            
             return
+        self.checkwin()
         self.wordbubbles.update(deltatime)
         self.check_merge()
 
@@ -142,7 +176,7 @@ class Game:
                 return
 
     def run(self):
-        self.running = True
+        self.state.change_state(RUNNING)
         # Used to manage how fast the screen updates
         clock = pygame.time.Clock()
 
@@ -150,13 +184,14 @@ class Game:
 
 
         # -------- Main Program Loop -----------
-        while self.running:
+        while self.state.get_state() != ENDED:
             
             # --- Event processing
             self.poll()
 
-            # --- Handle game logic
-            self.update(deltatime)
+            # --- Handle game logic, skips update
+            if not self.state.check_state(PAUSED):
+                self.update(deltatime)
 
             # --- Draw a frame
             self.draw()
@@ -168,11 +203,16 @@ class Game:
             deltatime = clock.tick(60)/1000
 
     def checkwin(self):
+        if self.win:
+            return
         for wordbubble in self.wordbubbles:
-            # print(wordbubble.word)
-            # print(self.targetword)
             if wordbubble.word == self.targetword:
                 self.win = True
+                self.winlabel = Label(self.uigroup, self.font, "You Win!", self.screen_width//2, self.screen_height//2)
+                self.restartButton = Button(self.uigroup, self.font, "Restart", self.screen_width//2, self.screen_height//2+70)
+                self.exitButton = Button(self.uigroup, self.font, "Exit", self.screen_width//2, self.screen_height//2+130)
+                break
+ 
 
 
 

@@ -1,5 +1,6 @@
 import pygame
 import random
+import os
 
 class Bubble(pygame.sprite.Sprite):
     """
@@ -18,6 +19,8 @@ class Bubble(pygame.sprite.Sprite):
         textrect = text.get_rect()
 
         img_path = f"src/assets/emoji/{hexcode}.png"
+        if not os.path.exists(img_path):
+            img_path=f"src/assets/emoji/1F4A9.png"
 
         # Create an image of the block, and fill it with a color.
         # This could also be an image loaded from the disk.
@@ -80,6 +83,7 @@ def make_wordbubble(screen_width, screen_height, spritegroup, font, word, hexcod
     else:
         width = x
         height = y
+
     # TODO give the ball a random colour
     colour = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
     # Speed and direction of ball
