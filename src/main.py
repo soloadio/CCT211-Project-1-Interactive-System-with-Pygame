@@ -8,6 +8,7 @@
     Run Instructions:
     - Use Python 3.12.10
     - pip install -r requirements.txt
+    - Must be connected to wifi
 """
 import pygame
 from wordbubble import *
